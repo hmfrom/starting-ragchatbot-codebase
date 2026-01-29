@@ -233,3 +233,187 @@ class TestAIGeneratorToolExecution:
             course_name="AI Course",
             lesson_number=5
         )
+
+
+class TestAIGeneratorMultiRoundToolExecution:
+    """Tests for multi-round tool execution."""
+
+    def _create_tool_response(self, tool_name: str, tool_args: dict, call_id: str = "call_123"):
+        """Helper to create a mock tool call response."""
+        mock_tool_call = Mock()
+        mock_tool_call.id = call_id
+        mock_tool_call.function.name = tool_name
+        mock_tool_call.function.arguments = json.dumps(tool_args)
+
+        mock_message = Mock()
+        mock_message.content = None
+        mock_message.tool_calls = [mock_tool_call]
+
+        mock_choice = Mock()
+        mock_choice.message = mock_message
+        mock_choice.finish_reason = "tool_calls"
+
+        mock_response = Mock()
+        mock_response.choices = [mock_choice]
+        return mock_response
+
+    def _create_text_response(self, content: str):
+        """Helper to create a mock text response."""
+        mock_message = Mock()
+        mock_message.content = content
+        mock_message.tool_calls = None
+
+        mock_choice = Mock()
+        mock_choice.message = mock_message
+        mock_choice.finish_reason = "stop"
+
+        mock_response = Mock()
+        mock_response.choices = [mock_choice]
+        return mock_response
+
+    def test_two_sequential_tool_calls(self, mock_openai_client):
+        """Test that two sequential tool calls result in 3 API calls."""
+        # First call returns tool_use, second call returns tool_use, third returns text
+        tool_response_1 = self._create_tool_response("search_course_content", {"query": "python"}, "call_1")
+        tool_response_2 = self._create_tool_response("search_course_content", {"query": "java"}, "call_2")
+        final_response = self._create_text_response("Here's a comparison of Python and Java.")
+
+        mock_openai_client.chat.completions.create.side_effect = [
+            tool_response_1,
+            tool_response_2,
+            final_response
+        ]
+
+        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+
+        tool_manager = Mock()
+        tool_manager.execute_tool.return_value = "Search results"
+
+        tools = [{
+            "name": "search_course_content",
+            "description": "Search",
+            "input_schema": {"type": "object", "properties": {}}
+        }]
+
+        response = generator.generate_response(
+            query="Compare Python and Java courses",
+            tools=tools,
+            tool_manager=tool_manager
+        )
+
+        # Verify 3 API calls were made
+        assert mock_openai_client.chat.completions.create.call_count == 3
+        # Verify tool was executed twice
+        assert tool_manager.execute_tool.call_count == 2
+        assert response == "Here's a comparison of Python and Java."
+
+    def test_terminates_on_no_tool_use(self, mock_openai_client):
+        """Test that loop terminates when no tool_use is returned."""
+        tool_response = self._create_tool_response("search_course_content", {"query": "python"})
+        text_response = self._create_text_response("Python is a programming language.")
+
+        mock_openai_client.chat.completions.create.side_effect = [
+            tool_response,
+            text_response
+        ]
+
+        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+
+        tool_manager = Mock()
+        tool_manager.execute_tool.return_value = "Search results"
+
+        tools = [{
+            "name": "search_course_content",
+            "description": "Search",
+            "input_schema": {"type": "object", "properties": {}}
+        }]
+
+        response = generator.generate_response(
+            query="What is Python?",
+            tools=tools,
+            tool_manager=tool_manager
+        )
+
+        # Only 2 API calls: initial + after first tool execution
+        assert mock_openai_client.chat.completions.create.call_count == 2
+        assert tool_manager.execute_tool.call_count == 1
+        assert response == "Python is a programming language."
+
+    def test_terminates_at_max_rounds(self, mock_openai_client):
+        """Test that loop stops at max_tool_rounds even if more tool calls requested."""
+        # Always return tool_use to test the limit
+        tool_response_1 = self._create_tool_response("search_course_content", {"query": "topic1"}, "call_1")
+        tool_response_2 = self._create_tool_response("search_course_content", {"query": "topic2"}, "call_2")
+        tool_response_3 = self._create_tool_response("search_course_content", {"query": "topic3"}, "call_3")
+        final_response = self._create_text_response("Final answer after max rounds.")
+
+        mock_openai_client.chat.completions.create.side_effect = [
+            tool_response_1,
+            tool_response_2,
+            tool_response_3,  # This triggers max rounds
+            final_response    # Final call without tools
+        ]
+
+        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+
+        tool_manager = Mock()
+        tool_manager.execute_tool.return_value = "Search results"
+
+        tools = [{
+            "name": "search_course_content",
+            "description": "Search",
+            "input_schema": {"type": "object", "properties": {}}
+        }]
+
+        response = generator.generate_response(
+            query="Complex multi-part question",
+            tools=tools,
+            tool_manager=tool_manager
+        )
+
+        # 4 API calls: initial + 2 rounds with tools + final without tools
+        assert mock_openai_client.chat.completions.create.call_count == 4
+        # Tool executed twice (max_tool_rounds = 2)
+        assert tool_manager.execute_tool.call_count == 2
+        assert response == "Final answer after max rounds."
+
+    def test_tool_error_handling(self, mock_openai_client):
+        """Test graceful handling when tool execution raises an exception."""
+        tool_response = self._create_tool_response("search_course_content", {"query": "test"})
+        final_response = self._create_text_response("I encountered an error but can still respond.")
+
+        mock_openai_client.chat.completions.create.side_effect = [
+            tool_response,
+            final_response
+        ]
+
+        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+
+        tool_manager = Mock()
+        tool_manager.execute_tool.side_effect = Exception("Database connection failed")
+
+        tools = [{
+            "name": "search_course_content",
+            "description": "Search",
+            "input_schema": {"type": "object", "properties": {}}
+        }]
+
+        response = generator.generate_response(
+            query="Search for something",
+            tools=tools,
+            tool_manager=tool_manager
+        )
+
+        # Verify the error was handled and response returned
+        assert response == "I encountered an error but can still respond."
+
+        # Verify the error message was passed to the API
+        second_call = mock_openai_client.chat.completions.create.call_args_list[1]
+        messages = second_call.kwargs["messages"]
+        tool_result_msg = [m for m in messages if m.get("role") == "tool"][0]
+        assert "Error executing tool" in tool_result_msg["content"]
+        assert "Database connection failed" in tool_result_msg["content"]
