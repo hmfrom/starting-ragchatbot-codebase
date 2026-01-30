@@ -129,6 +129,7 @@ class DocumentProcessor:
             # Try to match course link
             link_match = re.match(r'^Course Link:\s*(.+)$', line, re.IGNORECASE)
             if link_match:
+                
                 course_link = link_match.group(1).strip()
                 continue
                 
