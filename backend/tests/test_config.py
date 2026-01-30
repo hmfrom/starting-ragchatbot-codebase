@@ -22,9 +22,9 @@ class TestConfig:
 
     def test_max_results_reasonable_upper_bound(self):
         """MAX_RESULTS should not be excessively large."""
-        assert config.MAX_RESULTS <= 20, (
-            f"MAX_RESULTS is {config.MAX_RESULTS}, which may return too many results"
-        )
+        assert (
+            config.MAX_RESULTS <= 20
+        ), f"MAX_RESULTS is {config.MAX_RESULTS}, which may return too many results"
 
     def test_chunk_size_is_positive(self):
         """CHUNK_SIZE must be positive for document processing."""

@@ -27,9 +27,7 @@ class TestCourseSearchTool:
         assert "AI Fundamentals" in result
         assert "machine learning basics" in result
         mock_vector_store.search.assert_called_once_with(
-            query="machine learning",
-            course_name=None,
-            lesson_number=None
+            query="machine learning", course_name=None, lesson_number=None
         )
 
     def test_execute_with_empty_results(self, mock_vector_store, empty_search_results):
@@ -50,9 +48,7 @@ class TestCourseSearchTool:
 
         assert "in course 'Python'" in result
         mock_vector_store.search.assert_called_once_with(
-            query="basics",
-            course_name="Python",
-            lesson_number=None
+            query="basics", course_name="Python", lesson_number=None
         )
 
     def test_execute_with_lesson_filter(self, mock_vector_store, empty_search_results):
@@ -64,9 +60,7 @@ class TestCourseSearchTool:
 
         assert "in lesson 3" in result
         mock_vector_store.search.assert_called_once_with(
-            query="basics",
-            course_name=None,
-            lesson_number=3
+            query="basics", course_name=None, lesson_number=3
         )
 
     def test_execute_with_error(self, mock_vector_store, error_search_results):
@@ -96,7 +90,9 @@ class TestCourseSearchTool:
 
         tool.execute(query="machine learning")
 
-        assert any('href="https://example.com/lesson1"' in src for src in tool.last_sources)
+        assert any(
+            'href="https://example.com/lesson1"' in src for src in tool.last_sources
+        )
 
     def test_get_tool_definition(self, mock_vector_store):
         """Test tool definition is properly structured."""
@@ -121,8 +117,8 @@ class TestCourseOutlineTool:
             "course_link": "https://example.com/python",
             "lessons": [
                 {"lesson_number": 1, "lesson_title": "Introduction"},
-                {"lesson_number": 2, "lesson_title": "Variables"}
-            ]
+                {"lesson_number": 2, "lesson_title": "Variables"},
+            ],
         }
         tool = CourseOutlineTool(mock_vector_store)
 

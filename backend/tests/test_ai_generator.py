@@ -19,20 +19,22 @@ class TestAIGeneratorToolConversion:
 
     def test_convert_tools_to_openai_format(self, mock_openai_client):
         """Test that tools are correctly converted to OpenAI format."""
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
             generator = AIGenerator(api_key="test-key", model="gpt-4")
 
-        tools = [{
-            "name": "search_course_content",
-            "description": "Search course materials",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query"}
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search course materials",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query"}
+                    },
+                    "required": ["query"],
                 },
-                "required": ["query"]
             }
-        }]
+        ]
 
         converted = generator._convert_tools_to_openai_format(tools)
 
@@ -44,20 +46,20 @@ class TestAIGeneratorToolConversion:
 
     def test_convert_multiple_tools(self, mock_openai_client):
         """Test conversion of multiple tools."""
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
             generator = AIGenerator(api_key="test-key", model="gpt-4")
 
         tools = [
             {
                 "name": "tool1",
                 "description": "First tool",
-                "input_schema": {"type": "object", "properties": {}}
+                "input_schema": {"type": "object", "properties": {}},
             },
             {
                 "name": "tool2",
                 "description": "Second tool",
-                "input_schema": {"type": "object", "properties": {}}
-            }
+                "input_schema": {"type": "object", "properties": {}},
+            },
         ]
 
         converted = generator._convert_tools_to_openai_format(tools)
@@ -72,7 +74,7 @@ class TestAIGeneratorResponse:
 
     def test_generate_response_without_tools(self, mock_openai_client):
         """Test basic response generation without tools."""
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
             generator = AIGenerator(api_key="test-key", model="gpt-4")
 
         response = generator.generate_response(query="What is Python?")
@@ -82,12 +84,12 @@ class TestAIGeneratorResponse:
 
     def test_generate_response_with_history(self, mock_openai_client):
         """Test response generation includes conversation history."""
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
             generator = AIGenerator(api_key="test-key", model="gpt-4")
 
         response = generator.generate_response(
             query="Follow up question",
-            conversation_history="User: Hi\nAssistant: Hello!"
+            conversation_history="User: Hi\nAssistant: Hello!",
         )
 
         call_args = mock_openai_client.chat.completions.create.call_args
@@ -96,19 +98,19 @@ class TestAIGeneratorResponse:
 
     def test_generate_response_passes_tools(self, mock_openai_client):
         """Test that tools are passed to the API when provided."""
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
             generator = AIGenerator(api_key="test-key", model="gpt-4")
 
-        tools = [{
-            "name": "search",
-            "description": "Search tool",
-            "input_schema": {"type": "object", "properties": {}}
-        }]
+        tools = [
+            {
+                "name": "search",
+                "description": "Search tool",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ]
 
         generator.generate_response(
-            query="Search for something",
-            tools=tools,
-            tool_manager=Mock()
+            query="Search for something", tools=tools, tool_manager=Mock()
         )
 
         call_args = mock_openai_client.chat.completions.create.call_args
@@ -149,30 +151,32 @@ class TestAIGeneratorToolExecution:
         final_response = Mock()
         final_response.choices = [final_choice]
 
-        mock_openai_client.chat.completions.create.side_effect = [tool_response, final_response]
+        mock_openai_client.chat.completions.create.side_effect = [
+            tool_response,
+            final_response,
+        ]
 
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
             generator = AIGenerator(api_key="test-key", model="gpt-4")
 
         tool_manager = Mock()
         tool_manager.execute_tool.return_value = "Search results for python basics"
 
-        tools = [{
-            "name": "search_course_content",
-            "description": "Search",
-            "input_schema": {"type": "object", "properties": {}}
-        }]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ]
 
         response = generator.generate_response(
-            query="Tell me about Python",
-            tools=tools,
-            tool_manager=tool_manager
+            query="Tell me about Python", tools=tools, tool_manager=tool_manager
         )
 
         # Verify tool was executed
         tool_manager.execute_tool.assert_called_once_with(
-            "search_course_content",
-            query="python basics"
+            "search_course_content", query="python basics"
         )
         assert response == "Here are the Python basics..."
 
@@ -181,11 +185,13 @@ class TestAIGeneratorToolExecution:
         mock_tool_call = Mock()
         mock_tool_call.id = "call_456"
         mock_tool_call.function.name = "search_course_content"
-        mock_tool_call.function.arguments = json.dumps({
-            "query": "machine learning",
-            "course_name": "AI Course",
-            "lesson_number": 5
-        })
+        mock_tool_call.function.arguments = json.dumps(
+            {
+                "query": "machine learning",
+                "course_name": "AI Course",
+                "lesson_number": 5,
+            }
+        )
 
         mock_message = Mock()
         mock_message.content = None
@@ -207,38 +213,43 @@ class TestAIGeneratorToolExecution:
         final_response = Mock()
         final_response.choices = [final_choice]
 
-        mock_openai_client.chat.completions.create.side_effect = [tool_response, final_response]
+        mock_openai_client.chat.completions.create.side_effect = [
+            tool_response,
+            final_response,
+        ]
 
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
             generator = AIGenerator(api_key="test-key", model="gpt-4")
 
         tool_manager = Mock()
         tool_manager.execute_tool.return_value = "Results"
 
-        tools = [{
-            "name": "search_course_content",
-            "description": "Search",
-            "input_schema": {"type": "object", "properties": {}}
-        }]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ]
 
         generator.generate_response(
-            query="Find ML content",
-            tools=tools,
-            tool_manager=tool_manager
+            query="Find ML content", tools=tools, tool_manager=tool_manager
         )
 
         tool_manager.execute_tool.assert_called_once_with(
             "search_course_content",
             query="machine learning",
             course_name="AI Course",
-            lesson_number=5
+            lesson_number=5,
         )
 
 
 class TestAIGeneratorMultiRoundToolExecution:
     """Tests for multi-round tool execution."""
 
-    def _create_tool_response(self, tool_name: str, tool_args: dict, call_id: str = "call_123"):
+    def _create_tool_response(
+        self, tool_name: str, tool_args: dict, call_id: str = "call_123"
+    ):
         """Helper to create a mock tool call response."""
         mock_tool_call = Mock()
         mock_tool_call.id = call_id
@@ -274,32 +285,42 @@ class TestAIGeneratorMultiRoundToolExecution:
     def test_two_sequential_tool_calls(self, mock_openai_client):
         """Test that two sequential tool calls result in 3 API calls."""
         # First call returns tool_use, second call returns tool_use, third returns text
-        tool_response_1 = self._create_tool_response("search_course_content", {"query": "python"}, "call_1")
-        tool_response_2 = self._create_tool_response("search_course_content", {"query": "java"}, "call_2")
-        final_response = self._create_text_response("Here's a comparison of Python and Java.")
+        tool_response_1 = self._create_tool_response(
+            "search_course_content", {"query": "python"}, "call_1"
+        )
+        tool_response_2 = self._create_tool_response(
+            "search_course_content", {"query": "java"}, "call_2"
+        )
+        final_response = self._create_text_response(
+            "Here's a comparison of Python and Java."
+        )
 
         mock_openai_client.chat.completions.create.side_effect = [
             tool_response_1,
             tool_response_2,
-            final_response
+            final_response,
         ]
 
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
-            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
+            generator = AIGenerator(
+                api_key="test-key", model="gpt-4", max_tool_rounds=2
+            )
 
         tool_manager = Mock()
         tool_manager.execute_tool.return_value = "Search results"
 
-        tools = [{
-            "name": "search_course_content",
-            "description": "Search",
-            "input_schema": {"type": "object", "properties": {}}
-        }]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ]
 
         response = generator.generate_response(
             query="Compare Python and Java courses",
             tools=tools,
-            tool_manager=tool_manager
+            tool_manager=tool_manager,
         )
 
         # Verify 3 API calls were made
@@ -310,30 +331,34 @@ class TestAIGeneratorMultiRoundToolExecution:
 
     def test_terminates_on_no_tool_use(self, mock_openai_client):
         """Test that loop terminates when no tool_use is returned."""
-        tool_response = self._create_tool_response("search_course_content", {"query": "python"})
+        tool_response = self._create_tool_response(
+            "search_course_content", {"query": "python"}
+        )
         text_response = self._create_text_response("Python is a programming language.")
 
         mock_openai_client.chat.completions.create.side_effect = [
             tool_response,
-            text_response
+            text_response,
         ]
 
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
-            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
+            generator = AIGenerator(
+                api_key="test-key", model="gpt-4", max_tool_rounds=2
+            )
 
         tool_manager = Mock()
         tool_manager.execute_tool.return_value = "Search results"
 
-        tools = [{
-            "name": "search_course_content",
-            "description": "Search",
-            "input_schema": {"type": "object", "properties": {}}
-        }]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ]
 
         response = generator.generate_response(
-            query="What is Python?",
-            tools=tools,
-            tool_manager=tool_manager
+            query="What is Python?", tools=tools, tool_manager=tool_manager
         )
 
         # Only 2 API calls: initial + after first tool execution
@@ -344,34 +369,42 @@ class TestAIGeneratorMultiRoundToolExecution:
     def test_terminates_at_max_rounds(self, mock_openai_client):
         """Test that loop stops at max_tool_rounds even if more tool calls requested."""
         # Always return tool_use to test the limit
-        tool_response_1 = self._create_tool_response("search_course_content", {"query": "topic1"}, "call_1")
-        tool_response_2 = self._create_tool_response("search_course_content", {"query": "topic2"}, "call_2")
-        tool_response_3 = self._create_tool_response("search_course_content", {"query": "topic3"}, "call_3")
+        tool_response_1 = self._create_tool_response(
+            "search_course_content", {"query": "topic1"}, "call_1"
+        )
+        tool_response_2 = self._create_tool_response(
+            "search_course_content", {"query": "topic2"}, "call_2"
+        )
+        tool_response_3 = self._create_tool_response(
+            "search_course_content", {"query": "topic3"}, "call_3"
+        )
         final_response = self._create_text_response("Final answer after max rounds.")
 
         mock_openai_client.chat.completions.create.side_effect = [
             tool_response_1,
             tool_response_2,
             tool_response_3,  # This triggers max rounds
-            final_response    # Final call without tools
+            final_response,  # Final call without tools
         ]
 
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
-            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
+            generator = AIGenerator(
+                api_key="test-key", model="gpt-4", max_tool_rounds=2
+            )
 
         tool_manager = Mock()
         tool_manager.execute_tool.return_value = "Search results"
 
-        tools = [{
-            "name": "search_course_content",
-            "description": "Search",
-            "input_schema": {"type": "object", "properties": {}}
-        }]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ]
 
         response = generator.generate_response(
-            query="Complex multi-part question",
-            tools=tools,
-            tool_manager=tool_manager
+            query="Complex multi-part question", tools=tools, tool_manager=tool_manager
         )
 
         # 4 API calls: initial + 2 rounds with tools + final without tools
@@ -382,30 +415,36 @@ class TestAIGeneratorMultiRoundToolExecution:
 
     def test_tool_error_handling(self, mock_openai_client):
         """Test graceful handling when tool execution raises an exception."""
-        tool_response = self._create_tool_response("search_course_content", {"query": "test"})
-        final_response = self._create_text_response("I encountered an error but can still respond.")
+        tool_response = self._create_tool_response(
+            "search_course_content", {"query": "test"}
+        )
+        final_response = self._create_text_response(
+            "I encountered an error but can still respond."
+        )
 
         mock_openai_client.chat.completions.create.side_effect = [
             tool_response,
-            final_response
+            final_response,
         ]
 
-        with patch('ai_generator.OpenAI', return_value=mock_openai_client):
-            generator = AIGenerator(api_key="test-key", model="gpt-4", max_tool_rounds=2)
+        with patch("ai_generator.OpenAI", return_value=mock_openai_client):
+            generator = AIGenerator(
+                api_key="test-key", model="gpt-4", max_tool_rounds=2
+            )
 
         tool_manager = Mock()
         tool_manager.execute_tool.side_effect = Exception("Database connection failed")
 
-        tools = [{
-            "name": "search_course_content",
-            "description": "Search",
-            "input_schema": {"type": "object", "properties": {}}
-        }]
+        tools = [
+            {
+                "name": "search_course_content",
+                "description": "Search",
+                "input_schema": {"type": "object", "properties": {}},
+            }
+        ]
 
         response = generator.generate_response(
-            query="Search for something",
-            tools=tools,
-            tool_manager=tool_manager
+            query="Search for something", tools=tools, tool_manager=tool_manager
         )
 
         # Verify the error was handled and response returned

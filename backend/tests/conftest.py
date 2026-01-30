@@ -18,18 +18,20 @@ from vector_store import SearchResults
 @pytest.fixture
 def mock_search_results():
     """Factory fixture for creating SearchResults with test data."""
+
     def _create_results(
         documents: List[str] = None,
         metadata: List[Dict[str, Any]] = None,
         distances: List[float] = None,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ) -> SearchResults:
         return SearchResults(
             documents=documents or [],
             metadata=metadata or [],
             distances=distances or [],
-            error=error
+            error=error,
         )
+
     return _create_results
 
 
@@ -39,13 +41,13 @@ def sample_search_results(mock_search_results):
     return mock_search_results(
         documents=[
             "This is content about machine learning basics.",
-            "Neural networks are a key part of deep learning."
+            "Neural networks are a key part of deep learning.",
         ],
         metadata=[
             {"course_title": "AI Fundamentals", "lesson_number": 1, "chunk_index": 0},
-            {"course_title": "AI Fundamentals", "lesson_number": 2, "chunk_index": 1}
+            {"course_title": "AI Fundamentals", "lesson_number": 2, "chunk_index": 1},
         ],
-        distances=[0.2, 0.3]
+        distances=[0.2, 0.3],
     )
 
 

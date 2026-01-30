@@ -18,6 +18,9 @@ uv run python -m <module>
 # Install dependencies
 uv sync
 
+# Install with dev tools (black formatter)
+uv sync --extra dev
+
 # Run the application (from project root)
 ./run.sh
 # Or manually:
@@ -26,6 +29,19 @@ cd backend && uv run uvicorn app:app --reload --port 8000
 # Access points
 # Web UI: http://localhost:8000
 # API docs: http://localhost:8000/docs
+```
+
+## Code Quality
+
+```bash
+# Format all Python files
+./scripts/format.sh
+
+# Check formatting without changes
+./scripts/check-format.sh
+
+# Run all quality checks
+./scripts/quality.sh
 ```
 
 ## Environment Setup
